@@ -1,5 +1,7 @@
 # 1st Team Assignment: Image Processing with Parallel Computing
 
+---
+
 ## Overview
 
 This project, running from March 6th, 2024 to March 25th, 2024, aims to apply various image processing techniques using parallel computing. The objective is to perform operations such as converting images to black and white, blurring, and adding noise on a dataset of images, leveraging parallel processing to optimize performance.
