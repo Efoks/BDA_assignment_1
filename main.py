@@ -15,7 +15,7 @@ def add_noise(image, percentage_of_black=0.1, black_threshold=0.1):
 
     new_image = np.copy(image).astype(np.float64)
     for i in range(3):
-        new_image[:, :, i] += np.random.normal(scale=noise_std, size=image.shape[:2])
+        new_image[:, :,             i] += np.random.normal(scale=noise_std, size=image.shape[:2])
 
     new_image = np.clip(new_image, 0, 255).astype(np.uint8)
 
@@ -31,7 +31,7 @@ def main():
 
     # Get the first image
     test_image = io.imread(os.path.join(cfg.DATA_DIR, files[0]))
-    # Image conversions
+    # Image conversions that will be used for general testing of parralelization and its results.
     grayscale = color.rgb2gray(test_image)
     blur = filters.gaussian(test_image, sigma=2, channel_axis=-1)
     noise = add_noise(test_image)
