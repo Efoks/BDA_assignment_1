@@ -1,3 +1,10 @@
+# To-Do:
+
+- Process images func could be improved by reusing the pool.
+- In the images there can be seen some artifacts from border processing.
+- Pipeline
+- Testing
+
 # 1st Team Assignment: Image Processing with Parallel Computing
 
 ---
@@ -28,11 +35,11 @@ The images for processing are provided in the following dataset: [Download Datas
 - **Objective:** Implement parallel processing for image transformations.
 - **Guidance:** Utilize Python parallel programming libraries.
 
-### 3. Image Processing Techniques
+###  ~~3. Image Processing Techniques~~ 
 
-- **A. Black and White Conversion:** Optimize threshold to achieve a balanced black and white image.
-- **B. Image Blurring:** Apply a blurring effect.
-- **C. Noise Addition:** Add noise equivalent to 10% of the black pixels in the converted black and white images.
+- ~~**A. Black and White Conversion:**~~ Optimize threshold to achieve a balanced black and white image.
+- ~~**B. Image Blurring:**~~ Apply a blurring effect.
+- ~~**C. Noise Addition:**~~ Add noise equivalent to 10% of the black pixels in the converted black and white images.
 - **Guidance:** Explore various techniques and algorithms for each processing requirement.
 
 ### 4. Testing Parallel Job Efficiency
