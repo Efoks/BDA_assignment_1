@@ -1,9 +1,6 @@
 # To-Do:
 
-- Process images func could be improved by reusing the pool.
 - In the images there can be seen some artifacts from border processing.
-- Pipeline
-- Testing
 
 # 1st Team Assignment: Image Processing with Parallel Computing
 
