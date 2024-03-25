@@ -80,12 +80,12 @@ class ImageProcessingPipeline:
 
         for i in range(0, len(images), self.batch_size):
             batch_start_time = time.time()
-            print(f"Processing batch {i // self.batch_size + 1}")
+            # print(f"Processing batch {i // self.batch_size + 1}")
 
             batch = images[i:i + self.batch_size]
             batch_processed_images = self.process_batch(batch)
             processed_images.extend(batch_processed_images)
-            print(f"Processed {len(batch_processed_images)} images")
+            # print(f"Processed {len(batch_processed_images)} images")
 
             batch_end_time = time.time()
             self.batch_times.append(batch_end_time - batch_start_time)
