@@ -16,56 +16,93 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class ImageProcessor:
     def __init__(self, img, kernel_size=2, sigma=0.2):
+        """
+        Initializes the ImageProcessor with an image and optional kernel size and sigma values.
 
+        Args:
+            img (cp.ndarray or any format convertible to cp.ndarray): The image to process.
+            kernel_size (int, optional): The size of the Gaussian kernel. Default is 2.
+            sigma (float, optional): The sigma value for the Gaussian kernel. Default is 0.2.
+        """
         self.image = cp.asarray(img) if not isinstance(img, cp.ndarray) else img
         self.kernel_size = kernel_size
         self.sigma = sigma
 
-        # Maybe delete? There is no point in keeping it
-        # as an instance variable if the kernel is always recreated for each image
-        self._gaussian_kernel = None
         self._black_pixels_count = None
+        self._gaussian_kernel = self.create_gaussian_kernel(self.kernel_size, self.sigma)
 
     def create_gaussian_kernel(self, size, sigma):
+        """
+        Creates a Gaussian kernel given a size and sigma.
+
+        Args:
+            size (int): The size of the kernel.
+            sigma (float): The sigma value for the kernel.
+
+        Returns:
+            cp.ndarray: The Gaussian kernel as a CuPy array.
+        """
         ax = cp.linspace(-(size - 1) / 2., (size - 1) / 2., size)
         xx, yy = cp.meshgrid(ax, ax)
         kernel = cp.exp(-(xx**2 + yy**2) / (2 * sigma**2))
-        kernel /= cp.sum(kernel)
-        self._gaussian_kernel = kernel
-        return kernel
+        return kernel / cp.sum(kernel)
 
     def apply_gaussian_blur(self):
-        if self._gaussian_kernel is None:
-            self._gaussian_kernel = self.create_gaussian_kernel(self.kernel_size, self.sigma)
-            if self.image.ndim == 2:  # Grayscale image
-                self._gaussian_kernel = self._gaussian_kernel[:, :, cp.newaxis]  # Add channel dimension
-            elif self.image.ndim == 3:  # Color image
-                self._gaussian_kernel = cp.repeat(self._gaussian_kernel[:, :, cp.newaxis], self.image.shape[2], axis=2)
+        """
+        Applies Gaussian blur to the image.
+        Description:
+        https://en.wikipedia.org/wiki/Gaussian_blur
 
+        Returns:
+            self: The ImageProcessor instance to allow method chaining.
+        """
         if self.image.ndim == 2:  # Grayscale image
-            self.image = convolve(self.image[:, :, cp.newaxis], self._gaussian_kernel, mode='reflect')[:, :, 0]
-        elif self.image.ndim == 3:  # Color image
             self.image = convolve(self.image, self._gaussian_kernel, mode='reflect')
-        return self
+            return self
+        elif self.image.ndim == 3:  # Color image
+            blurred = cp.zeros_like(self.image)
+            for i in range(self.image.shape[2]):  # Apply the filter to each channel
+                blurred[:, :, i] = convolve(self.image[:, :, i], self._gaussian_kernel, mode='reflect')
+            self.image = blurred
+            return self
 
     def apply_grayscale(self):
+        """
+        Converts the image to grayscale.
+        Description: of the formula used:
+        https://en.wikipedia.org/wiki/Luma_(video)gauss
+
+        Returns:
+            self: The ImageProcessor instance to allow method chaining.
+        """
         weights = cp.array([0.299, 0.587, 0.114], dtype=cp.float64)
         self.image = cp.tensordot(self.image, weights, axes=([-1], [0]))
-        self._black_pixels_count = np.sum(self.image < 0.1)  # black pixel sum
+        self._black_pixels_count = cp.sum(self.image < 10)  # black pixel sum, threshold set to 10 (can be adjusted if needed)
         return self
 
     def apply_gaussian_noise(self):
+        """
+        Applies Gaussian noise to the image based on the number of black pixels.
+        Description:
+        https://en.wikipedia.org/wiki/Gaussian_noise
+
+        Returns:
+            self: The ImageProcessor instance to allow method chaining.
+        """
         if self._black_pixels_count is None:
             # Making a copy, because need to keep the original image for further processing
             base_image = self.image
             self.apply_grayscale()
             self.image = base_image
 
-        base_variance = 0.00001
-        var_prop = self._black_pixels_count / np.prod(self.image.shape)
-        variance = base_variance + (var_prop * base_variance)
+        rows = cp.random.randint(0, int(self.image.shape[0]), (int(self._black_pixels_count * 0.1), 3))
+        cols = cp.random.randint(0, int(self.image.shape[1]), (int(self._black_pixels_count * 0.1), 3))
 
-        self.image = self.image + cp.random.normal(0, variance, self.image.shape)
+        channel_indices = cp.arange(self.image.shape[2])
+        noise = cp.random.randint(0, 256, (int(self._black_pixels_count * 0.1), 3), dtype=self.image.dtype)
+
+        self.image[rows, cols, channel_indices] = noise
+
         return self
 
 
@@ -85,6 +122,15 @@ class ImageProcessingPipeline:
         self.batch_times = []
 
     def load_and_process_batch(self, batch_paths):
+        """
+        Loads and processes a batch of images as specified by the batch_paths.
+
+        Args:
+            batch_paths (list of str): The paths of the images to process in the current batch.
+
+        Returns:
+            processed_images (list): A list of processed images (currently not utilized fully).
+        """
         start_time = time.time()
         processed_images = []
         for path in batch_paths:
@@ -98,6 +144,13 @@ class ImageProcessingPipeline:
         return processed_images
 
     def save_image(self, img, img_name):
+        """
+        Saves an image to the results directory, converting to the correct format as needed.
+
+        Args:
+            img (cp.ndarray or np.ndarray): The image to save.
+            img_name (str): The name of the image file.
+        """
         if isinstance(img, cp.ndarray):
             img = cp.asnumpy(img)
 
@@ -112,6 +165,9 @@ class ImageProcessingPipeline:
         io.imsave(result_path, img_to_save)
 
     def execute(self):
+        """
+        Executes the image processing pipeline, processing all images in the data directory in batches.
+        """
         self.start_time = time.time()
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = [executor.submit(self.load_and_process_batch, self.image_paths[i:i+self.batch_size]) for i in range(0, len(self.image_paths), self.batch_size)]
@@ -134,10 +190,9 @@ if __name__ == '__main__':
 
     pipeline = ImageProcessingPipeline(cfg.DATA_DIR,
                                        cfg.RESULTS_DIR,
-                                       ['apply_grayscale',
-                                        'apply_gaussian_blur',
-                                        'apply_gaussian_noise'],
-                                       batch_size=500,
+                                       # ['apply_gaussian_blur', 'apply_gaussian_noise', 'apply_grayscale'],
+                                       ['apply_gaussian_blur', 'apply_gaussian_noise', 'apply_grayscale'],
+                                       batch_size=8000,
                                        kernel_size=5,
                                        sigma=2)
     pipeline.execute()
