@@ -1,10 +1,14 @@
-# To-Do:
+# General strategy
 
-- In the images there can be seen some artifacts from border processing.
+To complete this task, we chose two different approaches: using CPU and using GPU.
+- Overall: the dataset gets divided into batches, size of which is chosen in the code itself.
+- CPU: The CPU gets an image, divides it into horizontal strips (number of strips matches the number of cores used). Each strip is processed in parallel. After the processing is finished, the strips are merged. This process continues until all of the data has been processed.
+- GPU: The batch is added into a Thread Queue on the CPU. It is then passed on to the GPU, where the image is divided into RGB values. Theses values are processed in parallel. After the processing is finished, the image gets merged. This process continues until all of the data has been processed.
+![alt text](image.png)
 
 # 1st Team Assignment: Image Processing with Parallel Computing
 
----
+
 
 ## Overview
 
